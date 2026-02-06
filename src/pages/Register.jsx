@@ -15,7 +15,7 @@ const Register = () => {
 
     const { register } = useAuth();
     const navigate = useNavigate();
-    const roles = getRoles();
+    const roles = getRoles().filter(role => role !== 'Admin');
 
     const getPasswordStrength = (pwd) => {
         let score = 0;

@@ -1,9 +1,9 @@
 // Authentication Context - SFA + MFA with OTP
 import { createContext, useContext, useState, useEffect } from 'react';
-import { hashPassword, verifyPassword } from '../utils/hashUtils';
 import { initializeKeys } from '../utils/cryptoUtils';
 
 const AuthContext = createContext(null);
+const API_URL = 'http://localhost:5000/api/auth';
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -29,17 +29,6 @@ export const AuthProvider = ({ children }) => {
         }
         setIsLoading(false);
     }, []);
-
-    // Get users from localStorage
-    const getUsers = () => {
-        const users = localStorage.getItem('users');
-        return users ? JSON.parse(users) : [];
-    };
-
-    // Save users to localStorage
-    const saveUsers = (users) => {
-        localStorage.setItem('users', JSON.stringify(users));
-    };
 
     // Generate 6-digit OTP
     const generateOTP = () => {
@@ -74,57 +63,60 @@ export const AuthProvider = ({ children }) => {
 
     // Register new user
     const register = async (username, password, role) => {
-        const users = getUsers();
+        try {
+            const response = await fetch(`${API_URL}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password, role }),
+            });
 
-        // Check if username already exists
-        if (users.find(u => u.username === username)) {
-            throw new Error('Username already exists');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Registration failed');
+            }
+
+            return { success: true, message: 'Registration successful' };
+        } catch (error) {
+            throw error;
         }
-
-        // Hash password with salt
-        const hashedPassword = await hashPassword(password);
-
-        const newUser = {
-            id: Date.now().toString(),
-            username,
-            password: hashedPassword,
-            role,
-            createdAt: new Date().toISOString()
-        };
-
-        users.push(newUser);
-        saveUsers(users);
-
-        return { success: true, message: 'Registration successful' };
     };
 
     // Login - Step 1: Verify password (SFA)
     const loginStep1 = async (username, password) => {
-        const users = getUsers();
-        const user = users.find(u => u.username === username);
+        try {
+            const response = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            });
 
-        if (!user) {
-            throw new Error('Invalid username or password');
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Invalid username or password');
+            }
+
+            // Password verified by backend, generate OTP for MFA
+            const { otp } = generateOTP();
+            setPendingAuth(data.user);
+
+            // Display OTP (simulating email/SMS)
+            console.log('🔑 OTP for MFA:', otp);
+
+            return {
+                success: true,
+                message: 'Password verified. Please enter OTP.',
+                requiresOTP: true,
+                displayOTP: otp
+            };
+        } catch (error) {
+            throw error;
         }
-
-        const isValid = await verifyPassword(password, user.password);
-        if (!isValid) {
-            throw new Error('Invalid username or password');
-        }
-
-        // Password verified, generate OTP for MFA
-        const { otp } = generateOTP();
-        setPendingAuth(user);
-
-        // Display OTP (simulating email/SMS)
-        console.log('🔑 OTP for MFA:', otp);
-
-        return {
-            success: true,
-            message: 'Password verified. Please enter OTP.',
-            requiresOTP: true,
-            displayOTP: otp // For demo purposes
-        };
     };
 
     // Login - Step 2: Verify OTP (MFA)
