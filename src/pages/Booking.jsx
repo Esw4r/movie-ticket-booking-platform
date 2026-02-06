@@ -56,22 +56,24 @@ const Booking = () => {
         );
     };
 
-    const generateSeatLayout = () => {
-        if (!selectedShow) return [];
-        const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
-        const seatsPerRow = Math.ceil(selectedShow.totalSeats / rows.length);
+    const [seatLayout, setSeatLayout] = useState([]);
 
-        return rows.map(row => ({
-            row,
-            seats: Array.from({ length: seatsPerRow }, (_, i) => ({
-                id: `${row}${i + 1}`,
-                number: `${row}${i + 1}`,
-                available: Math.random() > 0.3 // Simulate some booked seats
-            }))
-        }));
-    };
+    useEffect(() => {
+        if (selectedShow) {
+            const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            const seatsPerRow = Math.ceil(selectedShow.totalSeats / rows.length);
 
-    const [seatLayout] = useState(generateSeatLayout);
+            const layout = rows.map(row => ({
+                row,
+                seats: Array.from({ length: seatsPerRow }, (_, i) => ({
+                    id: `${row}${i + 1}`,
+                    number: `${row}${i + 1}`,
+                    available: Math.random() > 0.3 // Simulate some booked seats
+                }))
+            }));
+            setSeatLayout(layout);
+        }
+    }, [selectedShow]);
 
     const handleConfirmBooking = async () => {
         if (selectedSeats.length === 0) return;

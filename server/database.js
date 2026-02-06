@@ -42,6 +42,28 @@ function initDb() {
       duration INTEGER
     )`);
 
+        // Bookings Table
+        db.run(`CREATE TABLE IF NOT EXISTS bookings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      booking_id TEXT UNIQUE,
+      user_id INTEGER,
+      username TEXT,
+      movie_id INTEGER,
+      movie_title TEXT,
+      show_date TEXT,
+      show_time TEXT,
+      hall TEXT,
+      seats TEXT,
+      total_amount REAL,
+      status TEXT DEFAULT 'confirmed',
+      encrypted_payment TEXT,
+      signature TEXT,
+      qr_code TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (movie_id) REFERENCES movies(id)
+    )`);
+
         // Seed Movies if empty
         db.get("SELECT count(*) as count FROM movies", [], (err, row) => {
             if (err) return console.error(err.message);
