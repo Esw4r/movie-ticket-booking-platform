@@ -151,7 +151,8 @@ const Booking = () => {
                     encrypted_payment: encryptedPayment,
                     signature: signedMessage.signature,
                     qr_code: qrCode,
-                    status: 'confirmed'
+                    status: 'confirmed',
+                    booked_at: bookingData.bookedAt
                 })
             });
 
