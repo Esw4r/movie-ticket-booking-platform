@@ -14,6 +14,10 @@ const db = new verboseSqlite.Database(dbPath, (err) => {
         console.error('Error opening database ' + dbPath + ': ' + err.message);
     } else {
         console.log('Connected to the SQLite database.');
+        // Set busy timeout to 5 seconds to avoid SQLITE_BUSY errors
+        db.run('PRAGMA busy_timeout = 5000');
+        // Enable WAL mode for better concurrent access
+        db.run('PRAGMA journal_mode = WAL');
         initDb();
     }
 });

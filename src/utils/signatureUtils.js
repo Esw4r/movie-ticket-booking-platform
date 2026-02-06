@@ -33,15 +33,15 @@ export const verifySignature = (data, signature, publicKeyPem) => {
     }
 };
 
-// Create signed message with timestamp
+// Create signed message
 export const createSignedMessage = (data, privateKeyPem) => {
-    const timestamp = new Date().toISOString();
-    const messageWithTimestamp = { ...data, timestamp };
-    const hash = createHash(messageWithTimestamp);
-    const signature = signData(messageWithTimestamp, privateKeyPem);
+    // We expect 'data' to already contain any necessary timestamps (e.g., bookedAt)
+    // This ensures consistency between the signed object and what is stored/retrieved
+    const hash = createHash(data);
+    const signature = signData(data, privateKeyPem);
 
     return {
-        data: messageWithTimestamp,
+        data,
         hash,
         signature
     };
@@ -51,10 +51,12 @@ export const createSignedMessage = (data, privateKeyPem) => {
 export const verifySignedMessage = (signedMessage, publicKeyPem) => {
     const { data, hash, signature } = signedMessage;
 
-    // Verify hash
-    const computedHash = createHash(data);
-    if (computedHash !== hash) {
-        return { valid: false, reason: 'Hash mismatch - data may have been tampered' };
+    // Verify hash if provided
+    if (hash) {
+        const computedHash = createHash(data);
+        if (computedHash !== hash) {
+            return { valid: false, reason: 'Hash mismatch - data may have been tampered' };
+        }
     }
 
     // Verify signature

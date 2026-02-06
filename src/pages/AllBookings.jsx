@@ -63,7 +63,8 @@ const AllBookings = () => {
                     hall: booking.hall,
                     seats: booking.seats,
                     totalAmount: booking.totalAmount,
-                    status: booking.status
+                    status: booking.status,
+                    bookedAt: booking.bookedAt
                 },
                 signature: booking.signature
             };
@@ -92,7 +93,8 @@ const AllBookings = () => {
                         hall: booking.hall,
                         seats: booking.seats,
                         totalAmount: booking.totalAmount,
-                        status: booking.status
+                        status: booking.status,
+                        bookedAt: booking.bookedAt
                     },
                     signature: booking.signature
                 };

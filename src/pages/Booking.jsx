@@ -112,7 +112,23 @@ const Booking = () => {
             const encryptedPayment = hybridEncrypt(sensitiveData, keys.publicKey);
 
             // Create digital signature for booking confirmation
-            const signedMessage = createSignedMessage(bookingData, keys.privateKey);
+            // We only sign fields that are stored in the database and can be reconstructed for verification
+            const dataToSign = {
+                id: bookingData.id,
+                userId: bookingData.userId,
+                username: bookingData.username,
+                movieId: bookingData.movieId,
+                movieTitle: bookingData.movieTitle,
+                showDate: bookingData.showDate,
+                showTime: bookingData.showTime,
+                hall: bookingData.hall,
+                seats: bookingData.seats,
+                totalAmount: bookingData.totalAmount,
+                status: bookingData.status,
+                bookedAt: bookingData.bookedAt
+            };
+
+            const signedMessage = createSignedMessage(dataToSign, keys.privateKey);
 
             // Generate QR code
             const qrCode = await generateBookingQRCode(bookingId, signedMessage.signature);
