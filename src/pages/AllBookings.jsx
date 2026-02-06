@@ -1,31 +1,73 @@
 // All Bookings Page Component (Admin/Staff view)
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getBookings, getMovies } from '../data/sampleData';
 import { verifySignedMessage } from '../utils/signatureUtils';
 import { getKeys } from '../utils/cryptoUtils';
 
 const AllBookings = () => {
     const { user } = useAuth();
     const [bookings, setBookings] = useState([]);
-    const [movies, setMovies] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
     const [verificationResults, setVerificationResults] = useState({});
 
     useEffect(() => {
-        setBookings(getBookings().reverse());
-        setMovies(getMovies());
+        const fetchBookings = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/bookings');
+                if (response.ok) {
+                    const data = await response.json();
+                    // Transform API data to match expected format
+                    const formattedBookings = data.map(b => ({
+                        id: b.booking_id,
+                        userId: b.user_id,
+                        username: b.username,
+                        movieId: b.movie_id,
+                        movieTitle: b.movie_title,
+                        showDate: b.show_date,
+                        showTime: b.show_time,
+                        hall: b.hall,
+                        seats: b.seats,
+                        totalAmount: b.total_amount,
+                        status: b.status,
+                        signature: b.signature,
+                        qrCode: b.qr_code,
+                        bookedAt: b.created_at,
+                        encryptedPayment: b.encrypted_payment
+                    }));
+                    setBookings(formattedBookings);
+                }
+            } catch (error) {
+                console.error('Error fetching bookings:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBookings();
     }, []);
 
-    const getMovieTitle = (movieId) => {
-        const movie = movies.find(m => m.id === movieId);
-        return movie ? movie.title : 'Unknown';
-    };
-
     const handleVerifyBooking = (booking) => {
-        if (booking.signedMessage) {
+        if (booking.signature) {
             const keys = getKeys();
-            const result = verifySignedMessage(booking.signedMessage, keys.publicKey);
+            // Create a mock signedMessage for verification
+            const mockSignedMessage = {
+                data: {
+                    id: booking.id,
+                    userId: booking.userId,
+                    username: booking.username,
+                    movieId: booking.movieId,
+                    movieTitle: booking.movieTitle,
+                    showDate: booking.showDate,
+                    showTime: booking.showTime,
+                    hall: booking.hall,
+                    seats: booking.seats,
+                    totalAmount: booking.totalAmount,
+                    status: booking.status
+                },
+                signature: booking.signature
+            };
+            const result = verifySignedMessage(mockSignedMessage, keys.publicKey);
             setVerificationResults(prev => ({
                 ...prev,
                 [booking.id]: result
@@ -37,8 +79,24 @@ const AllBookings = () => {
         const keys = getKeys();
         const results = {};
         bookings.forEach(booking => {
-            if (booking.signedMessage) {
-                results[booking.id] = verifySignedMessage(booking.signedMessage, keys.publicKey);
+            if (booking.signature) {
+                const mockSignedMessage = {
+                    data: {
+                        id: booking.id,
+                        userId: booking.userId,
+                        username: booking.username,
+                        movieId: booking.movieId,
+                        movieTitle: booking.movieTitle,
+                        showDate: booking.showDate,
+                        showTime: booking.showTime,
+                        hall: booking.hall,
+                        seats: booking.seats,
+                        totalAmount: booking.totalAmount,
+                        status: booking.status
+                    },
+                    signature: booking.signature
+                };
+                results[booking.id] = verifySignedMessage(mockSignedMessage, keys.publicKey);
             }
         });
         setVerificationResults(results);
@@ -64,6 +122,16 @@ const AllBookings = () => {
             minute: '2-digit'
         });
     };
+
+    if (loading) {
+        return (
+            <div className="all-bookings-page">
+                <div className="loading-container">
+                    <p>Loading bookings...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="all-bookings-page">
@@ -93,7 +161,7 @@ const AllBookings = () => {
                 </div>
                 <div className="stat-card">
                     <span className="stat-value">
-                        ₹{bookings.reduce((sum, b) => sum + b.totalAmount, 0)}
+                        ₹{bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0)}
                     </span>
                     <span className="stat-label">Total Revenue</span>
                 </div>
@@ -125,10 +193,10 @@ const AllBookings = () => {
                             {filteredBookings.map(booking => (
                                 <tr key={booking.id}>
                                     <td className="booking-id">
-                                        <code>{booking.id.slice(-8)}</code>
+                                        <code>{booking.id?.slice(-8)}</code>
                                     </td>
                                     <td>{booking.username}</td>
-                                    <td>{getMovieTitle(booking.movieId)}</td>
+                                    <td>{booking.movieTitle}</td>
                                     <td>
                                         {formatDate(booking.showDate)}<br />
                                         <small>{booking.showTime} • {booking.hall}</small>

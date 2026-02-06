@@ -110,6 +110,88 @@ app.delete('/api/movies/:id', (req, res) => {
     });
 });
 
+// --- Booking Routes ---
+
+// Create a new booking
+app.post('/api/bookings', (req, res) => {
+    console.log('Received booking request:', req.body);
+
+    const {
+        booking_id, user_id, username, movie_id, movie_title,
+        show_date, show_time, hall, seats, total_amount,
+        encrypted_payment, signature, qr_code, status
+    } = req.body;
+
+    const sql = `INSERT INTO bookings 
+        (booking_id, user_id, username, movie_id, movie_title, show_date, show_time, hall, seats, total_amount, encrypted_payment, signature, qr_code, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const params = [
+        booking_id, user_id, username, movie_id, movie_title,
+        show_date, show_time, hall, JSON.stringify(seats), total_amount,
+        encrypted_payment ? JSON.stringify(encrypted_payment) : null,
+        signature || null,
+        qr_code || null,
+        status || 'confirmed'
+    ];
+
+    console.log('SQL params:', params);
+
+    db.run(sql, params, function (err) {
+        if (err) {
+            console.error('Database error:', err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        console.log('Booking saved successfully, ID:', this.lastID);
+        res.json({
+            success: true,
+            id: this.lastID,
+            booking_id
+        });
+    });
+});
+
+// Get all bookings (Admin/Staff)
+app.get('/api/bookings', (req, res) => {
+    db.all("SELECT * FROM bookings ORDER BY created_at DESC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        // Parse JSON fields
+        const bookings = rows.map(row => ({
+            ...row,
+            seats: JSON.parse(row.seats || '[]'),
+            encrypted_payment: row.encrypted_payment ? JSON.parse(row.encrypted_payment) : null
+        }));
+        res.json(bookings);
+    });
+});
+
+// Get bookings for a specific user
+app.get('/api/bookings/user/:userId', (req, res) => {
+    db.all("SELECT * FROM bookings WHERE user_id = ? ORDER BY created_at DESC", [req.params.userId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        // Parse JSON fields
+        const bookings = rows.map(row => ({
+            ...row,
+            seats: JSON.parse(row.seats || '[]'),
+            encrypted_payment: row.encrypted_payment ? JSON.parse(row.encrypted_payment) : null
+        }));
+        res.json(bookings);
+    });
+});
+
+// Get a single booking by booking_id
+app.get('/api/bookings/:bookingId', (req, res) => {
+    db.get("SELECT * FROM bookings WHERE booking_id = ?", [req.params.bookingId], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!row) return res.status(404).json({ error: 'Booking not found' });
+        res.json({
+            ...row,
+            seats: JSON.parse(row.seats || '[]'),
+            encrypted_payment: row.encrypted_payment ? JSON.parse(row.encrypted_payment) : null
+        });
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

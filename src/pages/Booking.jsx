@@ -84,8 +84,9 @@ const Booking = () => {
             const keys = getKeys();
 
             // Create booking data
+            const bookingId = `BK${Date.now()}`;
             const bookingData = {
-                id: `BK${Date.now()}`,
+                id: bookingId,
                 userId: user.id,
                 username: user.username,
                 movieId: movie.id,
@@ -114,23 +115,35 @@ const Booking = () => {
             const signedMessage = createSignedMessage(bookingData, keys.privateKey);
 
             // Generate QR code
-            const qrCode = await generateBookingQRCode(bookingData.id, signedMessage.signature);
+            const qrCode = await generateBookingQRCode(bookingId, signedMessage.signature);
 
-            // Complete booking object
-            const completeBooking = {
-                ...bookingData,
-                encryptedPayment,
-                signedMessage,
-                signature: signedMessage.signature,
-                qrCode
-            };
+            // Save booking to database via API
+            const response = await fetch('http://localhost:5000/api/bookings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking_id: bookingId,
+                    user_id: user.id,
+                    username: user.username,
+                    movie_id: movie.id,
+                    movie_title: movie.title,
+                    show_date: selectedShow.date,
+                    show_time: selectedShow.time,
+                    hall: selectedShow.hall,
+                    seats: selectedSeats,
+                    total_amount: bookingData.totalAmount,
+                    encrypted_payment: encryptedPayment,
+                    signature: signedMessage.signature,
+                    qr_code: qrCode,
+                    status: 'confirmed'
+                })
+            });
 
-            // Save booking
-            const bookings = getBookings();
-            bookings.push(completeBooking);
-            saveBookings(bookings);
+            if (!response.ok) {
+                throw new Error('Failed to save booking');
+            }
 
-            // Update show availability
+            // Update show availability (still using localStorage for shows)
             const allShows = getShows();
             const updatedShows = allShows.map(s =>
                 s.id === selectedShow.id
@@ -146,6 +159,15 @@ const Booking = () => {
                 hash: signedMessage.hash,
                 signatureTruncated: signedMessage.signature.substring(0, 50) + '...'
             });
+
+            // Complete booking object for display
+            const completeBooking = {
+                ...bookingData,
+                encryptedPayment,
+                signedMessage,
+                signature: signedMessage.signature,
+                qrCode
+            };
 
             setBookingResult(completeBooking);
             setStep(4);

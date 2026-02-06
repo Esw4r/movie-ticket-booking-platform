@@ -1,18 +1,60 @@
 // My Bookings Page Component (Customer view)
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getBookings } from '../data/sampleData';
 import BookingCard from '../components/BookingCard';
 
 const MyBookings = () => {
     const { user } = useAuth();
     const [bookings, setBookings] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const allBookings = getBookings();
-        const userBookings = allBookings.filter(b => b.userId === user?.id);
-        setBookings(userBookings.reverse()); // Most recent first
+        const fetchBookings = async () => {
+            if (!user) return;
+
+            try {
+                const response = await fetch(`http://localhost:5000/api/bookings/user/${user.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Transform API data to match expected format
+                    const formattedBookings = data.map(b => ({
+                        id: b.booking_id,
+                        userId: b.user_id,
+                        username: b.username,
+                        movieId: b.movie_id,
+                        movieTitle: b.movie_title,
+                        showDate: b.show_date,
+                        showTime: b.show_time,
+                        hall: b.hall,
+                        seats: b.seats,
+                        totalAmount: b.total_amount,
+                        status: b.status,
+                        signature: b.signature,
+                        qrCode: b.qr_code,
+                        bookedAt: b.created_at,
+                        encryptedPayment: b.encrypted_payment
+                    }));
+                    setBookings(formattedBookings);
+                }
+            } catch (error) {
+                console.error('Error fetching bookings:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchBookings();
     }, [user]);
+
+    if (loading) {
+        return (
+            <div className="bookings-page">
+                <div className="loading-container">
+                    <p>Loading your bookings...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bookings-page">
